@@ -1,0 +1,7 @@
+{
+    "DEFAULT_PAIR_ADDRESS": "",
+    "FACTORY_ADDRESS": "",
+    "CAMM_PRICE_SCANNER_ADDRESS": "0xFEE00b30aF19d37CE8421e6EF7DD0e9e62F4b2c5",
+    "BACKEND_GITHUB_URL": "https://github.com/6ygb/CAMM",
+    "FRONTEND_GITHUB_URL" : "https://github.com/6ygb/CAMM-FRONT"
+}

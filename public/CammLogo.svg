@@ -1,0 +1,16 @@
+<!-- public/camm-favicon.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>CAMM</title>
+  <!-- Big C (open on the right) -->
+  <path d="M50 12 A26 26 0 1 0 50 52" fill="none" stroke="#EAB308" stroke-width="6" stroke-linecap="round"></path>
+
+  <!-- Minimal Ethereum diamond (outlined facets) -->
+  <g fill="none" stroke="#EAB308" stroke-width="2" stroke-linejoin="round">
+    <!-- top -->
+    <polygon points="32,18 24,32 40,32"></polygon>
+    <line x1="32" y1="18" x2="32" y2="32"></line>
+    <!-- bottom -->
+    <polygon points="32,48 24,36 40,36"></polygon>
+    <line x1="32" y1="36" x2="32" y2="48"></line>
+  </g>
+</svg>

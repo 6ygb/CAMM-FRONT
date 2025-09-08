@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root { --gold: 232, 207, 107; }
+
+.bg-gold {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--gold), 0.95) 0%,
+    rgba(var(--gold), 0.85) 60%,
+    rgba(var(--gold), 0.95) 100%
+  );
+}
+body { @apply bg-background text-foreground; }
+
+/* globals or src/assets/main.css */
+.bg-zama {
+  --gold: 232, 207, 107;
+
+  background:
+    /* large top-right glow — LESS intense (0.26) and WIDER (fade to 85%) */
+    radial-gradient(1200px 900px at 92% 6%,
+      rgba(var(--gold), 0.26),
+      rgba(var(--gold), 0.10) 40%,
+      transparent 85%),
+
+    /* shift emphasis further down the page */
+    radial-gradient(900px 700px at 100% 72%,
+      rgba(var(--gold), 0.18),
+      transparent 72%),
+
+    /* dark base */
+    linear-gradient(180deg, #0b0f19 0%, #0a0d14 100%);
+}

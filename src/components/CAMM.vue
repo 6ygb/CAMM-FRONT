@@ -754,7 +754,7 @@
             <h2 class="text-lg font-medium text-primary mb-4">Decryption Requests</h2>
 
             <div v-if="storedRequests.length > 0" class="max-h-48 overflow-y-auto space-y-2 pr-1">
-              <div v-for="(req, index) in storedRequests.slice().reverse()" :key="index"
+              <div v-for="(req, index) in storedRequests.slice()" :key="index"
                 class="flex justify-between items-center bg-surface-2 p-3 rounded-md border border-slate-700 shadow-sm">
                 <div>
                   <p class="text-sm font-medium text-slate-200">{{ req.type }}</p>
@@ -1383,6 +1383,33 @@ function clearDeployedTokens() {
   deployedTokens.value = [];
 }
 
+function normalizeReq(req: DecryptionRequest): DecryptionRequest {
+  return {
+    ...req,
+    requestId: (req.requestId ?? '').toString().trim(),
+    pairAddress: req.pairAddress ? req.pairAddress.toLowerCase() : undefined,
+  };
+}
+
+function dedupeRequests(list: DecryptionRequest[]): DecryptionRequest[] {
+  const map = new Map<string, DecryptionRequest>();
+  for (const raw of list) {
+    const req = normalizeReq(raw);
+    const key = `${req.pairAddress ?? ''}|${req.requestId}`;
+    const prev = map.get(key);
+    if (!prev || (req.timestamp ?? 0) > (prev.timestamp ?? 0)) {
+      map.set(key, req);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+}
+
+function deduplicateDecryptionRequests(): void {
+  const cleaned = dedupeRequests(getStorage());
+  saveStorage(cleaned);
+  storedRequests.value = cleaned;
+}
+
 function addDecryptionRequest(type: string, blockNumber: number, requestId: string, pairAddress: string) {
   saveDecryptionRequest(type, blockNumber, requestId, pairAddress);
   storedRequests.value = getDecryptionRequests();
@@ -1391,7 +1418,8 @@ function addDecryptionRequest(type: string, blockNumber: number, requestId: stri
 function getStorage(): DecryptionRequest[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const list = raw ? JSON.parse(raw) as DecryptionRequest[] : [];
+    return dedupeRequests(list);
   } catch (err) {
     console.error("Error parsing storage:", err);
     return [];
@@ -1399,8 +1427,8 @@ function getStorage(): DecryptionRequest[] {
 }
 
 function saveStorage(data: DecryptionRequest[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dedupeRequests(data)));
   } catch (err) {
     console.error("Error saving storage:", err);
   }
@@ -1409,10 +1437,10 @@ function saveStorage(data: DecryptionRequest[]): void {
 function saveDecryptionRequest(type: string, blockNumber: any, requestId: any, pairAddress: string): void {
   const storage = getStorage();
   storage.push({
-    requestId: requestId?.toString(),
+    requestId: requestId?.toString().trim(),
     type,
     blockNumber: blockNumber?.toString(),
-    pairAddress,
+    pairAddress: pairAddress?.toLowerCase(),
     timestamp: Date.now(),
   });
   saveStorage(storage);
@@ -2798,6 +2826,7 @@ onMounted(async () => {
   if (isConnected.value && !isWrongNetwork.value) {
     await fetchTokenSymbols();
   }
+  deduplicateDecryptionRequests();
 })
 </script>
 

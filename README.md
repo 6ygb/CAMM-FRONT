@@ -59,8 +59,8 @@ Network settings live in `Network.json`:
 Default pair & factory addresses live in `CAMM.json`:
 ```json
 {
-    "DEFAULT_PAIR_ADDRESS": "",
-    "FACTORY_ADDRESS": "",
+    "DEFAULT_PAIR_ADDRESS": "0xEAa16A3390D95dd836F710680C1b9c8F422C6b43",
+    "FACTORY_ADDRESS": "0x1c8FC73B670E585BaBEBF1649faAf6b0742878Ec",
     "CAMM_PRICE_SCANNER_ADDRESS": "0xFEE00b30aF19d37CE8421e6EF7DD0e9e62F4b2c5",
     "BACKEND_GITHUB_URL": "https://github.com/6ygb/CAMM",
     "FRONTEND_GITHUB_URL" : "https://github.com/6ygb/CAMM-FRONT"

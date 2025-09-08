@@ -761,6 +761,15 @@
                   <p class="text-xs text-muted-foreground">Block: {{ req.blockNumber }}</p>
                   <p class="text-xs text-slate-500">Saved: {{ new Date(req.timestamp).toLocaleString() }}</p>
                   <p class="text-xs text-primary-300 font-mono">Request ID: {{ req.requestId }}</p>
+                  <p class="text-xs text-primary-300 font-mono">
+                    Pair:
+                    <span :title="req.pairAddress || 'unknown'"
+                      class="cursor-pointer underline-offset-2 hover:underline"
+                      @click="req.pairAddress && handleCopy(req.pairAddress)">
+                      {{ req.pairAddress ? truncateAddress(req.pairAddress) : 'unknown' }}
+                    </span>
+                    <span v-if="copiedText === req.pairAddress" class="ml-2 text-emerald-300">Copied!</span>
+                  </p>
                 </div>
                 <button @click="handleCopy(req.requestId)"
                   class="px-2 py-1 text-xs rounded-md transition-all duration-200" :class="copiedText === req.requestId
@@ -991,33 +1000,40 @@
   </div>
 
   <!-- Loading Modal -->
-  <div v-if="isProcessing" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div class="bg-surface rounded-lg p-6 shadow-xl max-w-md w-full border border-slate-700">
+  <div v-if="isProcessing && showLoading" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+    @click.self="closeLoadingModal" @keydown.esc="closeLoadingModal">
+    <div class="bg-surface rounded-lg p-6 shadow-xl max-w-md w-full border border-slate-700 relative" role="dialog"
+      aria-modal="true" aria-labelledby="loading-title" aria-describedby="loading-desc">
+      <!-- Close (X) -->
+      <button type="button" @click="closeLoadingModal"
+        class="absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-md border border-slate-700 p-1.5 text-slate-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
+        aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
       <div class="flex flex-col items-center">
-        <!-- CAMM spinner: spinning C around a static Ethereum logo -->
+        <!-- CAMM spinner -->
         <svg class="h-16 w-16 mb-4 text-primary" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true" role="img">
-          <!-- Spinning C (arc) -->
           <g class="spin-c" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round">
-            <!-- r=26 => circumference ≈ 163.36; show ~2/3 (≈109) and hide ~1/3 (≈55) -->
             <circle cx="32" cy="32" r="26" stroke-dasharray="109 55" />
           </g>
-
-          <!-- Static Ethereum (outlined facets, centered) -->
           <g fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round">
-            <!-- top -->
             <polygon points="32,18 24,32 40,32" />
             <line x1="32" y1="18" x2="32" y2="32" />
-            <!-- bottom -->
             <polygon points="32,48 24,36 40,36" />
             <line x1="32" y1="36" x2="32" y2="48" />
           </g>
         </svg>
 
-        <h3 class="text-lg font-medium text-foreground mb-2">Processing Transaction</h3>
-        <p class="text-muted-foreground text-center">
+        <h3 id="loading-title" class="text-lg font-medium text-foreground mb-2">Processing Transaction</h3>
+        <p id="loading-desc" class="text-muted-foreground text-center">
           {{ loadingMessage }}
         </p>
+
       </div>
     </div>
   </div>
@@ -1133,6 +1149,7 @@ interface DecryptionRequest {
   requestId: string;
   type: string;
   blockNumber: string;
+  pairAddress?: string;
   timestamp: number;
 }
 
@@ -1141,6 +1158,7 @@ const searchToken0Input = ref<string>("")
 const searchToken1Input = ref<string>("")
 const searchedPair = ref<string>("")
 const pairNotFound = ref<boolean>(false)
+
 
 const selectRecommendedPair = () => {
   pairNotFound.value = false
@@ -1238,6 +1256,18 @@ const refundButtonLabel = computed(() => {
     case 'remove': return 'Claim Remove-Liquidity Refund';
     default: return 'Claim Swap Refund';
   }
+});
+
+const showLoading = ref(true);
+
+function closeLoadingModal() {
+  // hide only the overlay; the async job continues
+  showLoading.value = false;
+}
+
+// whenever a new process starts, show the overlay again
+watch(isProcessing, (v) => {
+  if (v) showLoading.value = true;
 });
 
 // ===== Launch tab state =====
@@ -1353,8 +1383,8 @@ function clearDeployedTokens() {
   deployedTokens.value = [];
 }
 
-function addDecryptionRequest(type: string, blockNumber: number, requestId: string) {
-  saveDecryptionRequest(type, blockNumber, requestId);
+function addDecryptionRequest(type: string, blockNumber: number, requestId: string, pairAddress: string) {
+  saveDecryptionRequest(type, blockNumber, requestId, pairAddress);
   storedRequests.value = getDecryptionRequests();
 }
 
@@ -1376,12 +1406,13 @@ function saveStorage(data: DecryptionRequest[]): void {
   }
 }
 
-function saveDecryptionRequest(type: string, blockNumber: any, requestId: any): void {
+function saveDecryptionRequest(type: string, blockNumber: any, requestId: any, pairAddress: string): void {
   const storage = getStorage();
   storage.push({
     requestId: requestId?.toString(),
     type,
     blockNumber: blockNumber?.toString(),
+    pairAddress,
     timestamp: Date.now(),
   });
   saveStorage(storage);
@@ -1392,6 +1423,7 @@ function getDecryptionRequests(): DecryptionRequest[] {
 
 function clearDecryptionRequests(): void {
   localStorage.removeItem(STORAGE_KEY);
+  storedRequests.value = [];
 }
 
 function handleCopy(text: string) {
@@ -1425,6 +1457,8 @@ async function searchPairByAddress() {
   }
 
   try {
+    isProcessing.value = true;
+    loadingMessage.value = "Searching for pair...";
     const signer = provider ? await provider.getSigner() : null;
     if (!signer) return showErrorModal('No wallet connected. Please connect MetaMask.');
 
@@ -1444,6 +1478,9 @@ async function searchPairByAddress() {
     pairNotFound.value = true;
     searchedPair.value = "";
     showErrorModal('Could not load this pair address.');
+  }
+  finally {
+    isProcessing.value = false;
   }
 }
 
@@ -1595,10 +1632,14 @@ async function fetchPrice() {
 
 async function updateSwapPrice() {
   try {
+    isProcessing.value = true
+    loadingMessage.value = "Fetching latest price from API...";
     await fetchPrice();
     showSuccessModal(`${config.value.TOKEN0_SYMBOL}/${config.value.TOKEN1_SYMBOL} rate updated successfully!`);
   } catch (error) {
     console.error('Error fetching price from API:', error);
+  } finally {
+    isProcessing.value = false
   }
 }
 
@@ -1877,7 +1918,9 @@ async function getPairReserves() {
     loadingMessage.value = "Preparing requestReserveInfo transaction...";
 
     const pairInstance = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
-    const eventPromise = pollSpecificEvent(pairInstance, "discloseReservesInfo", 1000);
+    const anchorBlock = await provider!.getBlockNumber();
+    const eventPromise = waitForEventOnce(pairInstance, "discloseReservesInfo", { fromBlock: anchorBlock });
+
     const tx = await pairInstance.requestReserveInfo();
     loadingMessage.value = "Waiting for requestReserveInfo transaction to be mined...";
 
@@ -1890,8 +1933,8 @@ async function getPairReserves() {
     console.log("Request reserve info tx status:", receipt.status);
 
     const reservesEvent = await eventPromise;
-    const encryptedReserve0 = reservesEvent[2];
-    const encryptedReserve1 = reservesEvent[3];
+    const encryptedReserve0 = reservesEvent.args[2];
+    const encryptedReserve1 = reservesEvent.args[3];
 
     console.log("Got encrypted reserves:", encryptedReserve0, encryptedReserve1);
 
@@ -1966,7 +2009,8 @@ async function addLiquidity() {
     if (!block) throw new Error("Failed to fetch latest block.");
     const blockTimestamp = block.timestamp;
 
-    const decEventPromise = pollSpecificEvent(pairInstance, "decryptionRequested", 1000);
+    const decEventPromise = waitForEventOnce(pairInstance, "decryptionRequested", { fromBlock: block.number });
+
     loadingMessage.value = "Waiting for add liquidity transaction to be mined...";
     const liqTx = await pairInstance["addLiquidity(bytes32,bytes32,uint256,bytes)"](
       ciphertexts.handles[0],
@@ -1976,17 +2020,17 @@ async function addLiquidity() {
     );
 
     const liqReceipt = await liqTx.wait();
-    const decryptionRequestEvent = await decEventPromise;
-    const requestBlockNumber = decryptionRequestEvent[1];
-    const requestID = decryptionRequestEvent[2];
-    addDecryptionRequest("Add Liquidity", requestBlockNumber, requestID.toString());
-
-    const liqEventPromise = pollSpecificEvent(pairInstance, "liquidityMinted", 1000);
-
     console.log("Add liquidity status:", liqReceipt?.status);
     if (!liqReceipt?.status) {
       throw new Error("addLiquidity tx failed.");
     }
+
+    const decryptionRequestEvent = await decEventPromise;
+    const requestBlockNumber = decryptionRequestEvent.args[1];
+    const requestID = decryptionRequestEvent.args[2];
+    addDecryptionRequest("Add Liquidity", requestBlockNumber, requestID.toString(), config.value.PAIR_ADDRESS);
+
+    const liqEventPromise = waitForEventOnce(pairInstance, "liquidityMinted", { fromBlock: block.number });
     console.log("Waiting for liquidity minted event (gateway response).");
     loadingMessage.value = "Waiting for liquidity minted event (gateway response)...";
     await liqEventPromise;
@@ -2036,7 +2080,10 @@ async function removeLiquidity() {
     if (!block) throw new Error("Failed to fetch latest block.");
     const blockTimestamp = block.timestamp;
 
-    const decEventPromise = pollSpecificEvent(pairInstance, "decryptionRequested", 1000);
+    const anchorBlock = await provider!.getBlockNumber();
+    const decEventPromise = waitForEventOnce(pairInstance, "decryptionRequested", { fromBlock: anchorBlock });
+    const liqEventPromise = waitForEventOnce(pairInstance, "liquidityBurnt", { fromBlock: anchorBlock });
+
     loadingMessage.value = "Waiting for remove liquidity transaction to be mined...";
 
     const removeLiqTx = await pairInstance["removeLiquidity(bytes32,address,uint256,bytes)"](
@@ -2047,17 +2094,15 @@ async function removeLiquidity() {
     );
 
     const removeLiqReceipt = await removeLiqTx.wait();
-    const decryptionRequestEvent = await decEventPromise;
-    const requestBlockNumber = decryptionRequestEvent[1];
-    const requestID = decryptionRequestEvent[2];
-    addDecryptionRequest("Remove Liquidity", requestBlockNumber, requestID.toString());
-
-    const liqEventPromise = pollSpecificEvent(pairInstance, "liquidityBurnt", 1000);
-
     console.log("Remove liquidity status:", removeLiqReceipt?.status);
     if (!removeLiqReceipt?.status) {
       throw new Error("removeLiquidity tx failed.");
     }
+
+    const dec = await decEventPromise;
+    addDecryptionRequest("Remove Liquidity", Number(dec.args[1]), String(dec.args[2]), config.value.PAIR_ADDRESS);
+
+
     console.log("Waiting for liquidity burnt event (gateway response).");
     loadingMessage.value = "Waiting for liquidity burnt event (gateway response)...";
     await liqEventPromise;
@@ -2096,8 +2141,8 @@ async function submitRefund() {
       loadingMessage.value = 'Submitting swap refund request...';
     }
 
-    // Best-effort listen for Refund event (non-blocking on timeout)
-    const refundEvt = pollSpecificEvent(pair, 'Refund', 1000);
+    const anchorBlock = await provider!.getBlockNumber();
+    const refundEvt = waitForEventOnce(pair, 'Refund', { fromBlock: anchorBlock });
 
     const tx = await pair[method](id);
     const rcpt = await tx.wait();
@@ -2186,6 +2231,8 @@ const connectMetaMask = async (): Promise<void> => {
       showSuccessModal(`Connected to MetaMask, but you need to switch to the ${REQUIRED_NETWORK.chainName} network.`);
     } else {
       showSuccessModal(`Successfully connected to MetaMask: ${truncateAddress(account.value)}`);
+      fetchTokenSymbols();
+      fetchPrice();
     }
   } catch (error) {
     console.error('Error connecting to MetaMask:', error)
@@ -2287,113 +2334,95 @@ function logEventPretty(name: string, fields: Record<string, any>) {
   console.log(out);
 }
 
-
-// Signature topic (only topic0 since nothing is indexed)
-const SWAP_TOPIC = ethers.id(
-  "Swap(address,bytes32,bytes32,bytes32,bytes32,address)"
-);
-
-function decodeSwapLog(log: ethers.Log) {
-  const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-    ["address", "bytes32", "bytes32", "bytes32", "bytes32", "address"],
-    log.data
-  ) as unknown as [string, string, string, string, string, string];
-
-  const [from, a0In, a1In, a0Out, a1Out, to] = decoded;
-
-  return {
-    from,
-    to,
-    a0In,
-    a1In,
-    a0Out,
-    a1Out,
-    txHash: log.transactionHash ?? "",
-    blockNumber: log.blockNumber,
-  };
+function argsToNamedObject(fragment: any, args: any[]) {
+  const out: Record<string, any> = {};
+  (fragment?.inputs || []).forEach((inp: any, i: number) => {
+    const key = inp?.name || `arg${i}`;
+    out[key] = args[i];
+  });
+  return out;
 }
 
-
-function waitForSwapOnce(
-  pair: ethers.Contract,
+function waitForEventOnce(
+  contract: ethers.Contract,
+  eventName: string,
   {
     fromBlock,
-    toAddr,
     timeoutMs = 20 * 60 * 1000,
     pollMs = 7000,
-  }: { fromBlock: number; toAddr?: string; timeoutMs?: number; pollMs?: number }
-): Promise<{
-  from: string; to: string;
-  a0In: string; a1In: string; a0Out: string; a1Out: string;
-  txHash: string; blockNumber: number;
-}> {
+    filter,
+  }: {
+    fromBlock: number;
+    timeoutMs?: number;
+    pollMs?: number;
+    filter?: (args: any[], event: any) => boolean; // return true to accept
+  }
+): Promise<{ args: any[]; blockNumber: number; txHash: string }> {
   return new Promise((resolve, reject) => {
-    const ev = pair.getEvent("Swap");
+    const ev = contract.getEvent(eventName); // has .fragment and .topicHash in ethers v6
     let timer: any;
 
-    const handler = (from: string, a0In: string, a1In: string, a0Out: string, a1Out: string, to: string, event: any) => {
-      const bn = event?.log?.blockNumber ?? 0;
-      const okBlock = bn >= fromBlock;
-      const okTo = !toAddr || to.toLowerCase() === toAddr.toLowerCase();
-      if (okBlock && okTo) {
-        logEventPretty("Swap", {
-          from, amount0In: a0In, amount1In: a1In, amount0Out: a0Out, amount1Out: a1Out,
-          to, blockNumber: bn, txHash: event?.log?.transactionHash ?? "?"
-        });
-        clearTimeout(timer);
-        pair.off(ev, handler);
-        resolve({
-          from, to, a0In, a1In, a0Out, a1Out,
-          txHash: event?.log?.transactionHash ?? "",
-          blockNumber: bn
-        });
-      }
+    const finish = (args: any[], eventLike: any) => {
+      const bn = eventLike?.log?.blockNumber ?? eventLike?.blockNumber ?? 0;
+      const hash = eventLike?.log?.transactionHash ?? eventLike?.transactionHash ?? "";
+      logEventPretty(
+        eventName,
+        { ...argsToNamedObject(ev.fragment, args), blockNumber: bn, txHash: hash }
+      );
+      clearTimeout(timer);
+      contract.off(ev, listener);
+      resolve({ args, blockNumber: bn, txHash: hash });
     };
 
-    // Listen first (avoid race)
-    pair.on(ev, handler);
+    const listener = (...params: any[]) => {
+      const event = params[params.length - 1];
+      const args = params.slice(0, params.length - 1);
+      const bn = event?.log?.blockNumber ?? 0;
+      if (bn < fromBlock) return;
+      if (filter && !filter(args, event)) return;
+      finish(args, event);
+    };
 
-    // Polling fallback
+    // 1) Listen first (avoid race with soon-to-be-mined tx)
+    contract.on(ev, listener);
+
+    // 2) Polling fallback
     const poll = async () => {
       try {
         const latest = await provider!.getBlockNumber();
         const logs = await provider!.getLogs({
-          address: pair.target,
+          address: contract.target,
           fromBlock,
           toBlock: latest,
-          topics: [SWAP_TOPIC],
+          topics: [ev.topicHash], // topic0 only; we'll decode with ABI
         });
+
         for (const log of logs) {
-          const dec = decodeSwapLog(log);
-          if (!toAddr || dec.to.toLowerCase() === toAddr.toLowerCase()) {
-            logEventPretty("Swap", {
-              from: dec.from,
-              amount0In: dec.a0In,
-              amount1In: dec.a1In,
-              amount0Out: dec.a0Out,
-              amount1Out: dec.a1Out,
-              to: dec.to,
-              blockNumber: dec.blockNumber,
-              txHash: dec.txHash,
-            });
-            clearTimeout(timer);
-            pair.off(ev, handler);
-            resolve(dec);
+          try {
+            const parsed = contract.interface.parseLog(log);
+            if (!parsed || parsed.name !== eventName) continue;
+            const args = Array.from(parsed.args ?? []);
+            if (filter && !filter(args, { log })) continue;
+            finish(args, log);
             return;
+          } catch {
+            // not our event, ignore
           }
         }
-      } catch {/* ignore */ }
+      } catch {
+        // ignore transient provider errors and keep polling
+      }
       setTimeout(poll, pollMs);
     };
     poll();
 
+    // 3) Timeout guard
     timer = setTimeout(() => {
-      pair.off(ev, handler);
-      reject(new Error("Timeout waiting for Swap event"));
+      contract.off(ev, listener);
+      reject(new Error(`Timeout waiting for ${eventName} event`));
     }, timeoutMs);
   });
 }
-
 
 async function executeSwap() {
   if (!isConnected.value) return showErrorModal("Please connect your wallet first.");
@@ -2420,7 +2449,6 @@ async function executeSwap() {
     const pair = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
 
     const anchorBlock = await provider!.getBlockNumber();
-    const swapEvPromise = waitForSwapOnce(pair, { fromBlock: anchorBlock, toAddr: await signer.getAddress() });
 
     loadingMessage.value = "Preparing swap transaction…";
 
@@ -2435,8 +2463,16 @@ async function executeSwap() {
     const block = await provider!.getBlock("latest");
     const deadline = block!.timestamp + 1000;
 
+    const userAdd = (await signer.getAddress()).toLowerCase();
 
-    const decReqPromise = pollSpecificEvent(pair, "decryptionRequested", 2000);
+    const decReqPromise = waitForEventOnce(pair, "decryptionRequested", { fromBlock: anchorBlock });
+    const swapEvPromise = waitForEventOnce(pair, "Swap", {
+      fromBlock: anchorBlock,
+      filter: (args) => {
+        const to = (args[5] ?? "").toLowerCase();
+        return to === userAdd;
+      },
+    });
 
     loadingMessage.value = "Submitting swap…";
     const tx = await pair["swapTokens(bytes32,bytes32,address,uint256,bytes)"](
@@ -2451,15 +2487,18 @@ async function executeSwap() {
     if (!receipt?.status) throw new Error("Swap transaction failed.");
 
     const decEv = await decReqPromise;
-    addDecryptionRequest("Swap", Number(decEv[1]), String(decEv[2]));
+    addDecryptionRequest("Swap", Number(decEv.args[1]), String(decEv.args[2]), config.value.PAIR_ADDRESS);
 
     loadingMessage.value = "Waiting for swap to be processed (gateway response)…";
     const ev = await swapEvPromise;
+    const [sender, a0In, a1In, a0Out, a1Out, to] =
+      ev.args as [string, string, string, string, string, string];
+
 
     let msg = "Swap executed successfully!";
     try {
       loadingMessage.value = "Decrypting swap amounts…";
-      const [d0In, d1In, d0Out, d1Out] = await decryptSwapOutputs(ev.a0In, ev.a1In, ev.a0Out, ev.a1Out);
+      const [d0In, d1In, d0Out, d1Out] = await decryptSwapOutputs(a0In, a1In, a0Out, a1Out);
       const f = (bn: any) => parseFloat(ethers.formatUnits(bn, 6));
       msg = `Swap complete: +${f(d0Out)} ${config.value.TOKEN0_SYMBOL}, +${f(d1Out)} ${config.value.TOKEN1_SYMBOL} `
         + `(spent ${f(d0In)} ${config.value.TOKEN0_SYMBOL}, ${f(d1In)} ${config.value.TOKEN1_SYMBOL}).`;
@@ -2642,87 +2681,6 @@ async function createPairFromInputs() {
   } finally {
     isProcessing.value = false;
   }
-}
-
-async function pollSpecificEvent(
-  contract: any,
-  eventName: string,
-  pollInterval: number = 5000,
-): Promise<any> {
-  let lastBlockNumber = await provider?.getBlockNumber() || 0; // Start from the latest block
-  var log_str = "";
-
-  return new Promise<any[]>((resolve) => {
-    // Set a timeout to stop the polling after 40 seconds
-    const timeout = setTimeout(() => {
-      log_str = `Timeout: Event '${eventName}' was not emitted within 180 seconds`;
-      console.log(log_str);
-      clearInterval(pollingInterval); // Stop polling
-      resolve([]); // Resolve with null since the event was not emitted in the given time
-    }, 180000);
-
-    // Set an interval to poll for the specific event
-    const pollingInterval = setInterval(async () => {
-      try {
-        const currentBlockNumber = await provider?.getBlockNumber() || 0;
-
-        if (currentBlockNumber > lastBlockNumber) {
-          // Fetch all events emitted since the last polled block
-          const logs = await provider?.getLogs({
-            address: contract.target,
-            fromBlock: lastBlockNumber + 1, // Start from the block after the last checked one
-            toBlock: currentBlockNumber,
-          });
-
-          if (!logs) {
-            console.error("Failed to get logs");
-            return;
-          }
-
-          var param_names: string[] = [];
-          var param_values: any[] = [];
-
-          // Iterate over logs and filter for the specified event
-          for (const log_entry of logs) {
-            const parsedLog = contract.interface.parseLog(log_entry);
-            if (parsedLog && parsedLog.name === eventName) {
-              parsedLog.fragment.inputs.forEach((value: any, index: number) => {
-                param_names.push(value.name);
-              });
-
-              parsedLog.args.forEach((value: any, index: number) => {
-                param_values.push(value);
-              });
-
-              var display_str = `Event triggered: ${parsedLog.name} \n`;
-
-              for (var i = 0; i < param_names.length; i++) {
-                if (param_names[i] != "") {
-                  display_str += "\t\t" + param_names[i] + " = " + param_values[i] + "\n";
-                }
-              }
-
-              console.log(display_str);
-
-              // Resolve the promise with the parameter values
-              clearTimeout(timeout); // Clear the timeout
-              clearInterval(pollingInterval); // Stop polling
-              resolve(param_values); // Resolve with the parameter values
-              return;
-            }
-          }
-
-          // Update the last block number
-          lastBlockNumber = currentBlockNumber;
-        }
-      } catch (error) {
-        console.error("Error polling events:", error);
-        clearTimeout(timeout); // Clear the timeout in case of error
-        clearInterval(pollingInterval); // Stop polling in case of error
-        resolve([]);
-      }
-    }, pollInterval);
-  });
 }
 
 const fetchTokenSymbols = async (): Promise<void> => {

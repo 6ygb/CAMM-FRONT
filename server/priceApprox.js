@@ -103,9 +103,9 @@ async function getPriceApprox(pairAddress) {
 
     // Map decrypted or zero per guard
     const decrypted0 =
-        obfuscatedReserve0 === ZERO_HANDLE ? "0" : (decResult[obfuscatedReserve0] ?? "0");
+        obfuscatedReserve0 === ZERO_HANDLE ? 0n : BigInt(decResult[obfuscatedReserve0] ?? 0);
     const decrypted1 =
-        obfuscatedReserve1 === ZERO_HANDLE ? "0" : (decResult[obfuscatedReserve1] ?? "0");
+        obfuscatedReserve1 === ZERO_HANDLE ? 0n : BigInt(decResult[obfuscatedReserve1] ?? 0);
 
     console.log("[API] Decrypted reserves (with zero-guard):", decrypted0, decrypted1);
 
@@ -120,8 +120,8 @@ async function getPriceApprox(pairAddress) {
     }
 
     const result = {
-        decryptedReserve0: decrypted0,
-        decryptedReserve1: decrypted1,
+        decryptedReserve0: decrypted0.toString(),
+        decryptedReserve1: decrypted1.toString(),
         priceToken0Token1: price01,
         priceToken1Token0: price10,
     };

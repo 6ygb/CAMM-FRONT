@@ -8,6 +8,8 @@ This is a **testnet proof-of-concept** - **not meant for production**.
 > - Performance depends on **Zama’s on-chain decryption pipeline**, CAMM is way slower than a traditional AMM.  
 > - Pricing shown in the UI is **approximate** (about **±7%** by design) to preserve confidentiality.
 
+CAMM contracts repo at https://github.com/6ygb/CAMM
+
 ---
 
 ## What’s inside

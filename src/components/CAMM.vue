@@ -1090,7 +1090,10 @@
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { BrowserProvider } from 'ethers';
 import { ethers } from "ethers";
-import { initSDK, createInstance, SepoliaConfig } from "https://cdn.zama.ai/relayer-sdk-js/0.1.0-9/relayer-sdk-js.js";
+const SDK_URL = "https://cdn.zama.ai/relayer-sdk-js/0.1.0-9/relayer-sdk-js.js";
+let initSDK: any;
+let createInstance: any;
+let SepoliaConfig: any;
 
 
 import CAMM_ENV from "../CAMM.json";
@@ -1427,7 +1430,7 @@ function getStorage(): DecryptionRequest[] {
 }
 
 function saveStorage(data: DecryptionRequest[]): void {
-try {
+  try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dedupeRequests(data)));
   } catch (err) {
     console.error("Error saving storage:", err);
@@ -1810,7 +1813,7 @@ async function setOperator() {
     }
     isProcessing.value = true;
 
-    const currentBlock = await provider.getBlock("latest");
+    const currentBlock = await signer.provider!.getBlock("latest");
     if (!currentBlock) {
       throw new Error("Could not retrieve last block.");
     }
@@ -2374,29 +2377,22 @@ function argsToNamedObject(fragment: any, args: any[]) {
 function waitForEventOnce(
   contract: ethers.Contract,
   eventName: string,
-  {
-    fromBlock,
-    timeoutMs = 20 * 60 * 1000,
-    pollMs = 7000,
-    filter,
-  }: {
+  { fromBlock, timeoutMs = 20 * 60 * 1000, pollMs = 7000, filter }: {
     fromBlock: number;
     timeoutMs?: number;
     pollMs?: number;
-    filter?: (args: any[], event: any) => boolean; // return true to accept
+    filter?: (args: any[], event: any) => boolean;
   }
 ): Promise<{ args: any[]; blockNumber: number; txHash: string }> {
   return new Promise((resolve, reject) => {
-    const ev = contract.getEvent(eventName); // has .fragment and .topicHash in ethers v6
+    const ev: any = (contract as any).getEvent(eventName); // <-- cast to any
     let timer: any;
 
     const finish = (args: any[], eventLike: any) => {
       const bn = eventLike?.log?.blockNumber ?? eventLike?.blockNumber ?? 0;
       const hash = eventLike?.log?.transactionHash ?? eventLike?.transactionHash ?? "";
-      logEventPretty(
-        eventName,
-        { ...argsToNamedObject(ev.fragment, args), blockNumber: bn, txHash: hash }
-      );
+      // ev.fragment is also "any"
+      logEventPretty(eventName, { ...argsToNamedObject(ev.fragment, args), blockNumber: bn, txHash: hash });
       clearTimeout(timer);
       contract.off(ev, listener);
       resolve({ args, blockNumber: bn, txHash: hash });
@@ -2411,10 +2407,8 @@ function waitForEventOnce(
       finish(args, event);
     };
 
-    // 1) Listen first (avoid race with soon-to-be-mined tx)
     contract.on(ev, listener);
 
-    // 2) Polling fallback
     const poll = async () => {
       try {
         const latest = await provider!.getBlockNumber();
@@ -2422,7 +2416,7 @@ function waitForEventOnce(
           address: contract.target,
           fromBlock,
           toBlock: latest,
-          topics: [ev.topicHash], // topic0 only; we'll decode with ABI
+          topics: [ev.topicHash], // cast makes TS happy
         });
 
         for (const log of logs) {
@@ -2434,23 +2428,23 @@ function waitForEventOnce(
             finish(args, log);
             return;
           } catch {
-            // not our event, ignore
+            // ignore
           }
         }
       } catch {
-        // ignore transient provider errors and keep polling
+        // ignore transient provider errors
       }
       setTimeout(poll, pollMs);
     };
     poll();
 
-    // 3) Timeout guard
     timer = setTimeout(() => {
       contract.off(ev, listener);
       reject(new Error(`Timeout waiting for ${eventName} event`));
     }, timeoutMs);
   });
 }
+
 
 async function executeSwap() {
   if (!isConnected.value) return showErrorModal("Please connect your wallet first.");
@@ -2526,10 +2520,13 @@ async function executeSwap() {
     let msg = "Swap executed successfully!";
     try {
       loadingMessage.value = "Decrypting swap amounts…";
-      const [d0In, d1In, d0Out, d1Out] = await decryptSwapOutputs(a0In, a1In, a0Out, a1Out);
-      const f = (bn: any) => parseFloat(ethers.formatUnits(bn, 6));
-      msg = `Swap complete: +${f(d0Out)} ${config.value.TOKEN0_SYMBOL}, +${f(d1Out)} ${config.value.TOKEN1_SYMBOL} `
-        + `(spent ${f(d0In)} ${config.value.TOKEN0_SYMBOL}, ${f(d1In)} ${config.value.TOKEN1_SYMBOL}).`;
+      const res = await decryptSwapOutputs(a0In, a1In, a0Out, a1Out);
+      if (res) {
+        const [d0In, d1In, d0Out, d1Out] = res;
+        const f = (bn: any) => parseFloat(ethers.formatUnits(bn, 6));
+        msg = `Swap complete: +${f(d0Out)} ${config.value.TOKEN0_SYMBOL}, +${f(d1Out)} ${config.value.TOKEN1_SYMBOL} `
+          + `(spent ${f(d0In)} ${config.value.TOKEN0_SYMBOL}, ${f(d1In)} ${config.value.TOKEN1_SYMBOL}).`;
+      }
     } catch { }
 
     showSuccessModal(msg);
@@ -2812,10 +2809,15 @@ async function searchPair() {
 
 onMounted(async () => {
   // Check MetaMask connection
+  const sdk = await import(/* @vite-ignore */ SDK_URL);
+  initSDK = sdk.initSDK;
+  createInstance = sdk.createInstance;
+  SepoliaConfig = sdk.SepoliaConfig;
+
   maybeShowPOCModal();
   await initSDK();
-  checkMetaMaskConnection()
-  console.log("Creating instance ...")
+  checkMetaMaskConnection();
+  console.log("Creating instance ...");
   console.log("SepoliaConfig:", SepoliaConfig);
 
   const fhevmConfig = { ...SepoliaConfig, network: window.ethereum };

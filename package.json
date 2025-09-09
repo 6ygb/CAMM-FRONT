@@ -8,7 +8,10 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build"
+    "type-check": "vue-tsc --build",
+    "clean": "rimraf dist tsconfig.tsbuildinfo node_modules/.vite .vite",
+    "type-clean": "vue-tsc --build --clean",
+    "clean:all": "npm run clean && npm run type-clean"
   },
   "dependencies": {
     "@zama-fhe/relayer-sdk": "^0.1.2",
@@ -25,6 +28,7 @@
     "autoprefixer": "^10.4.20",
     "npm-run-all2": "^7.0.2",
     "postcss": "^8.5.3",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.7.3",
     "vite": "^6.1.0",

@@ -1090,7 +1090,7 @@
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { BrowserProvider } from 'ethers';
 import { ethers } from "ethers";
-const SDK_URL = "https://cdn.zama.ai/relayer-sdk-js/0.1.0-9/relayer-sdk-js.js";
+const SDK_URL = "https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.js";
 let initSDK: any;
 let createInstance: any;
 let SepoliaConfig: any;

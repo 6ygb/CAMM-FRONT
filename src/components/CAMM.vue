@@ -101,14 +101,10 @@
               Don’t show this again
             </label>
             <div class="space-x-2">
-              <button type="button" @click="closePOCModal"
-                class="px-3 py-2 rounded-md border border-slate-700 text-sm text-slate-200 hover:bg-slate-800 focus:outline-none">
+              <button type="button" @click="closePOCModal" class="btn btn--ghost">
                 Close
               </button>
-              <button type="button" @click="confirmPOCModal" autofocus class="px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground
-                   rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none
-                   focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface
-                   transition-all duration-200">
+              <button type="button" @click="confirmPOCModal" autofocus class="btn btn--primary">
                 I understand
               </button>
             </div>
@@ -260,10 +256,11 @@
             <li>Refresh this page after switching to the network</li>
           </ol>
         </div>
-
-        <div class="text-center">
-          <button @click="refreshPage"
-            class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200 font-medium">
+        <div class="flex items-center justify-center gap-3">
+          <button @click="switchToRequiredNetwork" class="btn btn--primary mr-2">
+            Switch to {{ REQUIRED_NETWORK.chainName }}
+          </button>
+          <button @click="refreshPage" class="btn btn--primary">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd"
                 d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
@@ -303,8 +300,7 @@
               Please connect your wallet to use this application.
             </p>
             <div class="mt-2">
-              <button @click="connectMetaMask"
-                class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200">
+              <button @click="connectMetaMask" class="btn btn--primary">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5 mr-2 shrink-0" fill="none"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                   aria-hidden="true">
@@ -362,8 +358,7 @@
 
             <!-- Recommended Pair -->
             <div class="mb-6">
-              <button @click="selectRecommendedPair"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface font-medium transition-all duration-200">
+              <button @click="selectRecommendedPair" class="btn btn--primary w-full">
                 Select Recommended default pair
               </button>
               <p class="text-sm text-muted-foreground mt-2 text-center"> {{ CAMM_ENV.DEFAULT_PAIR_ADDRESS }} </p>
@@ -382,8 +377,8 @@
                   class="w-full px-3 py-2 border rounded-md border-slate-700 focus:ring-primary focus:border-amber-500 text-sm bg-surface-2 placeholder-slate-500" />
               </div>
 
-              <button @click="searchPair"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface font-medium transition-all duration-200">
+              <button @click="searchPair" class="w-full btn btn--primary"
+                :disabled="!isConnected || pending.searchPair">
                 Search Pair
               </button>
             </div>
@@ -408,8 +403,8 @@
                   <input v-model="searchPairAddrInput" type="text" placeholder="0x..."
                     class="w-full px-3 py-2 border rounded-md border-slate-700 focus:ring-primary focus:border-amber-500 text-sm bg-surface-2 placeholder-slate-500" />
                 </div>
-                <button @click="searchPairByAddress"
-                  class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface font-medium transition-all duration-200">
+                <button @click="searchPairByAddress" class="w-full btn btn--primary"
+                  :disabled="!isConnected || pending.searchPairByAddr">
                   Load Pair
                 </button>
               </div>
@@ -495,9 +490,8 @@
               confidentiality constraints.</p>
             <p class="text-sm text-muted-foreground mb-4 text-center">Displayed rate shows a ~ ±7% imprecision.</p>
             <!-- Swap Button -->
-            <button @click="executeSwap"
-              class="w-full px-4 py-3 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface font-medium shadow-md transition-all duration-200"
-              :disabled="!isConnected || !fromAmount || fromAmount <= 0 || isProcessing">
+            <button @click="executeSwap" class="w-full btn btn--primary"
+              :disabled="!isConnected || !fromAmount || fromAmount <= 0 || pending.swap">
               {{ isConnected ? 'Swap' : 'Connect Wallet to Swap' }}
             </button>
           </div>
@@ -508,19 +502,14 @@
               config.TOKEN1_SYMBOL }} Rate</h3>
             <div class="flex justify-between items-center">
               <p class="text-xl font-bold text-foreground">{{ T0T1Rate ? T0T1Rate.toFixed(4) : 'Loading...' }}</p>
-              <button @click="updateSwapPrice()"
-                class="px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="isProcessing">
+              <button @click="updateSwapPrice()" class="btn btn--primary" :disabled="pending.fetchPrice">
                 Refresh Rate
               </button>
             </div>
           </div>
 
           <button @click="requestPriceInfo()" class="w-2/5 min-w-[250px] mx-auto block px-4 py-3 
-                    bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground 
-                    rounded-md hover:from-primary-400 hover:to-primary-300 
-                    focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface
-                    font-medium shadow-md transition-all duration-200" :disabled="!isConnected || isProcessing">
+                    btn btn--primary" :disabled="!isConnected || pending.selfDecryptPrice">
             Self decrypt price
           </button>
 
@@ -542,9 +531,7 @@
               </div>
             </div>
             <div class="mt-4">
-              <button @click="getBalances"
-                class="px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="isProcessing">
+              <button @click="getBalances" class="btn btn--primary w-full" :disabled="pending.balances">
                 Get Balances
               </button>
             </div>
@@ -566,9 +553,7 @@
                   <option :value="config.TOKEN1_SYMBOL">{{ config.TOKEN1_SYMBOL }}</option>
                 </select>
               </div>
-              <button @click="claimAirdrop"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="!isConnected || isProcessing">
+              <button @click="claimAirdrop" class="w-full btn btn--primary" :disabled="!isConnected || pending.airdrop">
                 Claim Airdrop
               </button>
             </div>
@@ -599,9 +584,8 @@
                   placeholder="0.00" />
               </div>
 
-              <button @click="transferTokens"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="!isConnected || !transferAmount || transferAmount <= 0 || !transferRecipient || isProcessing">
+              <button @click="transferTokens" class="btn btn--primary w-full"
+                :disabled="!isConnected || !transferAmount || transferAmount <= 0 || !transferRecipient || pending.transfer">
                 Transfer Tokens
               </button>
             </div>
@@ -627,9 +611,7 @@
                   placeholder="0x..." />
               </div>
               <p class="text-sm text-muted-foreground mt-2 text-center"> Operator allowance duration is 10 minutes. </p>
-              <button @click="setOperator"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="!isConnected || isProcessing">
+              <button @click="setOperator" class="w-full btn btn--primary" :disabled="!isConnected || pending.operator">
                 Set Operator
               </button>
             </div>
@@ -656,14 +638,10 @@
               <p class="text-2xl font-bold text-foreground">{{ lpBalance }}</p>
             </div>
             <div class="mt-4 flex space-x-2">
-              <button @click="getLPBalance"
-                class="px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="isProcessing">
+              <button @click="getLPBalance" class="btn btn--primary w-1/2" :disabled="pending.lpBalance">
                 Get LP Balance
               </button>
-              <button @click="getPairReserves"
-                class="px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="isProcessing">
+              <button @click="getPairReserves" class="btn btn--primary w-1/2" :disabled="pending.reserves">
                 Get Obfuscated Reserves
               </button>
             </div>
@@ -685,9 +663,8 @@
                   class="block w-full pl-3 pr-10 py-2 text-base border-slate-700 focus:outline-none focus:ring-primary focus:border-amber-500 sm:text-sm rounded-md bg-surface-2 placeholder-slate-500"
                   placeholder="0.00" />
               </div>
-              <button @click="addLiquidity"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="!isConnected || !addLiquidityAmount0 || !addLiquidityAmount1 || addLiquidityAmount0 <= 0 || addLiquidityAmount1 <= 0 || isProcessing">
+              <button @click="addLiquidity" class="w-full btn btn--primary"
+                :disabled="!isConnected || !addLiquidityAmount0 || !addLiquidityAmount1 || addLiquidityAmount0 <= 0 || addLiquidityAmount1 <= 0 || pending.addLiquidity">
                 Add Liquidity
               </button>
             </div>
@@ -703,9 +680,8 @@
                   class="block w-full pl-3 pr-10 py-2 text-base border-slate-700 focus:outline-none focus:ring-primary focus:border-amber-500 sm:text-sm rounded-md bg-surface-2 placeholder-slate-500"
                   placeholder="0.00" />
               </div>
-              <button @click="removeLiquidity"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="!isConnected || !removeLiquidityAmount || removeLiquidityAmount <= 0 || isProcessing">
+              <button @click="removeLiquidity" class="w-full btn btn--primary"
+                :disabled="!isConnected || !removeLiquidityAmount || removeLiquidityAmount <= 0 || pending.removeLiquidity">
                 Remove Liquidity
               </button>
             </div>
@@ -739,9 +715,8 @@
               </p>
 
               <!-- Submit -->
-              <button @click="submitRefund"
-                class="w-full px-4 py-2 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface transition-all duration-200"
-                :disabled="!isConnected || !isValidRefundId || isProcessing">
+              <button @click="submitRefund" class="w-full btn btn--primary"
+                :disabled="!isConnected || !isValidRefundId || pending.refund">
                 {{ refundButtonLabel }}
               </button>
             </div>
@@ -771,11 +746,12 @@
                     <span v-if="copiedText === req.pairAddress" class="ml-2 text-emerald-300">Copied!</span>
                   </p>
                 </div>
-                <button @click="handleCopy(req.requestId)"
-                  class="px-2 py-1 text-xs rounded-md transition-all duration-200" :class="copiedText === req.requestId
+                <button @click="handleCopy(req.requestId)" :class="[
+                  'btn px-2 py-1 transition-colors',
+                  copiedText === req.requestId
                     ? 'bg-emerald-500 text-primary-foreground animate-pulse'
                     : 'bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground hover:from-primary-400 hover:to-primary-300'
-                    ">
+                ]">
                   {{ copiedText === req.requestId ? 'Copied!' : 'Copy ID' }}
                 </button>
               </div>
@@ -818,9 +794,8 @@
             </div>
 
             <div class="mt-4">
-              <button @click="deployToken"
-                class="w-full px-4 py-3 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface font-medium shadow-md transition-all duration-200"
-                :disabled="!isConnected || !newTokenName || !newTokenSymbol || isProcessing">
+              <button @click="deployToken" class="w-full btn btn--primary"
+                :disabled="!isConnected || !newTokenName || !newTokenSymbol || pending.deployToken">
                 Deploy Token
               </button>
               <p class="text-xs text-muted-foreground mt-2 text-center">
@@ -866,9 +841,8 @@
             </div>
 
             <div class="mt-4">
-              <button @click="createPairFromInputs"
-                class="w-full px-4 py-3 bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground rounded-md hover:from-primary-400 hover:to-primary-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface font-medium shadow-md transition-all duration-200"
-                :disabled="!isConnected || isProcessing">
+              <button @click="createPairFromInputs" class="w-full btn btn--primary"
+                :disabled="!isConnected || pending.createPair">
                 Create Pair
               </button>
               <p class="text-xs text-muted-foreground mt-2 text-center">
@@ -889,11 +863,12 @@
                   <p class="text-xs text-muted-foreground">Deployed: {{ new Date(tok.timestamp).toLocaleString() }}</p>
                   <p class="text-xs text-primary-300 font-mono">Address: {{ tok.address }}</p>
                 </div>
-                <button @click="handleCopy(tok.address)"
-                  class="px-2 py-1 text-xs rounded-md transition-all duration-200"
-                  :class="copiedText === tok.address
+                <button @click="handleCopy(tok.address)" :class="[
+                  'btn px-2 py-1 transition-colors',
+                  copiedText === tok.address
                     ? 'bg-emerald-500 text-primary-foreground animate-pulse'
-                    : 'bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground hover:from-primary-400 hover:to-primary-300'">
+                    : 'bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground hover:from-primary-400 hover:to-primary-300'
+                ]">
                   {{ copiedText === tok.address ? 'Copied!' : 'Copy' }}
                 </button>
               </div>
@@ -926,10 +901,12 @@
                     {{ truncateAddress(p.token0) }} / {{ truncateAddress(p.token1) }}
                   </p>
                 </div>
-                <button @click="handleCopy(p.address)" class="px-2 py-1 text-xs rounded-md transition-all duration-200"
-                  :class="copiedText === p.address
+                <button @click="handleCopy(p.address)" :class="[
+                  'btn px-2 py-1 transition-colors',
+                  copiedText === p.address
                     ? 'bg-emerald-500 text-primary-foreground animate-pulse'
-                    : 'bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground hover:from-primary-400 hover:to-primary-300'">
+                    : 'bg-gradient-to-r from-primary-300 to-primary-200 text-primary-foreground hover:from-primary-400 hover:to-primary-300'
+                ]">
                   {{ copiedText === p.address ? 'Copied!' : 'Copy' }}
                 </button>
               </div>
@@ -1000,7 +977,7 @@
   </div>
 
   <!-- Loading Modal -->
-  <div v-if="isProcessing && showLoading" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+  <div v-if="showLoading" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
     @click.self="closeLoadingModal" @keydown.esc="closeLoadingModal">
     <div class="bg-surface rounded-lg p-6 shadow-xl max-w-md w-full border border-slate-700 relative" role="dialog"
       aria-modal="true" aria-labelledby="loading-title" aria-describedby="loading-desc">
@@ -1136,6 +1113,8 @@ const REQUIRED_NETWORK = {
   blockExplorerUrl: NETWORK_ENV.public.EXPLORER_URL
 };
 
+const REQUIRED_CHAIN_ID_HEX = ('0x' + Number(REQUIRED_NETWORK.chainId).toString(16)).toLowerCase();
+
 // Configuration
 const config = ref<Config>({
   TOKEN0_ADDRESS: "",
@@ -1186,6 +1165,25 @@ const CAMM_GITHUB_URL: string = CAMM_ENV.BACKEND_GITHUB_URL;
 const CAMM_FRONT_GITHUB_URL: string = CAMM_ENV.FRONTEND_GITHUB_URL;
 
 // Loading Modal State
+const pending = reactive({
+  swap: false,
+  addLiquidity: false,
+  removeLiquidity: false,
+  balances: false,
+  reserves: false,
+  airdrop: false,
+  transfer: false,
+  operator: false,
+  refund: false,
+  deployToken: false,
+  createPair: false,
+  fetchPrice: false,
+  searchPair: false,
+  searchPairByAddr: false,
+  selfDecryptPrice: false,
+  lpBalance: false,
+  metamask: false,
+})
 const loadingMessage = ref<string>("Please wait while your transaction is being processed...");
 
 // POC modal state
@@ -1220,8 +1218,9 @@ const isConnected = ref<boolean>(false)
 const account = ref<string>('')
 const chainId = ref<string>('')
 const isWrongNetwork = computed(() => {
-  return isMetaMaskInstalled.value && chainId.value && chainId.value !== "0x" + REQUIRED_NETWORK.chainId.toString(16);
+  return isMetaMaskInstalled.value && !!chainId.value && chainId.value.toLowerCase() !== REQUIRED_CHAIN_ID_HEX;
 });
+
 
 // Swap tab state
 const fromCurrency = ref<string>(config.value.TOKEN0_SYMBOL);
@@ -1231,7 +1230,6 @@ const toAmount = ref<number>(0)
 const swapRate = ref<number>(0) // Default value
 
 // Transaction state
-const isProcessing = ref<boolean>(false)
 const showSuccess = ref<boolean>(false)
 const successMessage = ref<string>('')
 
@@ -1261,17 +1259,12 @@ const refundButtonLabel = computed(() => {
   }
 });
 
-const showLoading = ref(true);
+const showLoading = ref(false);
 
 function closeLoadingModal() {
-  // hide only the overlay; the async job continues
   showLoading.value = false;
 }
 
-// whenever a new process starts, show the overlay again
-watch(isProcessing, (v) => {
-  if (v) showLoading.value = true;
-});
 
 // ===== Launch tab state =====
 const deployedTokens = ref<DeployedToken[]>(readTokenHistory());
@@ -1488,7 +1481,7 @@ async function searchPairByAddress() {
   }
 
   try {
-    isProcessing.value = true;
+    pending.searchPairByAddr = true;
     loadingMessage.value = "Searching for pair...";
     const signer = provider ? await provider.getSigner() : null;
     if (!signer) return showErrorModal('No wallet connected. Please connect MetaMask.');
@@ -1511,7 +1504,7 @@ async function searchPairByAddress() {
     showErrorModal('Could not load this pair address.');
   }
   finally {
-    isProcessing.value = false;
+    pending.searchPairByAddr = false;
   }
 }
 
@@ -1596,7 +1589,7 @@ const getBalances = async (): Promise<void> => {
     return
   }
 
-  isProcessing.value = true
+  pending.balances = true
   loadingMessage.value = "Fetching confidential balances...";
 
   try {
@@ -1641,7 +1634,7 @@ const getBalances = async (): Promise<void> => {
     console.error('Error getting balances:', error)
     showErrorModal('Failed to get balances')
   } finally {
-    isProcessing.value = false
+    pending.balances = false
   }
 }
 
@@ -1663,14 +1656,14 @@ async function fetchPrice() {
 
 async function updateSwapPrice() {
   try {
-    isProcessing.value = true
+    pending.fetchPrice = true
     loadingMessage.value = "Fetching latest price from API...";
     await fetchPrice();
     showSuccessModal(`${config.value.TOKEN0_SYMBOL}/${config.value.TOKEN1_SYMBOL} rate updated successfully!`);
   } catch (error) {
     console.error('Error fetching price from API:', error);
   } finally {
-    isProcessing.value = false
+    pending.fetchPrice = false
   }
 }
 
@@ -1686,7 +1679,7 @@ const claimAirdrop = async (): Promise<void> => {
     return;
   }
 
-  isProcessing.value = true
+  pending.airdrop = true
   loadingMessage.value = "Preparing AirDrop transaction...";
 
   let sourceToken;
@@ -1713,7 +1706,7 @@ const claimAirdrop = async (): Promise<void> => {
     console.error('Error while claiming airdrop:', error);
     showErrorModal("Error while claiming airdrop");
   } finally {
-    isProcessing.value = false
+    pending.airdrop = false
   }
 }
 
@@ -1728,7 +1721,7 @@ const transferTokens = async (): Promise<void> => {
     return
   }
 
-  isProcessing.value = true
+  pending.transfer = true
   loadingMessage.value = "Preparing transfer transaction...";
 
   const signer = provider ? await provider.getSigner() : null;
@@ -1763,7 +1756,7 @@ const transferTokens = async (): Promise<void> => {
 
     if (!receipt.status) {
       showErrorModal("Error while transfering tokens");
-      isProcessing.value = false
+      pending.transfer = false
       return;
     }
 
@@ -1774,7 +1767,7 @@ const transferTokens = async (): Promise<void> => {
     console.error('Error transferring tokens:', error)
     showErrorModal('Failed to transfer tokens')
   } finally {
-    isProcessing.value = false
+    pending.transfer = false
   }
 }
 
@@ -1795,7 +1788,7 @@ async function setOperator() {
     return;
   }
 
-  isProcessing.value = true
+  pending.operator = true
   loadingMessage.value = "Preparing setOperator transaction...";
 
   try {
@@ -1811,7 +1804,6 @@ async function setOperator() {
     } else {
       throw new Error("Invalid value selected");
     }
-    isProcessing.value = true;
 
     const currentBlock = await signer.provider!.getBlock("latest");
     if (!currentBlock) {
@@ -1840,7 +1832,7 @@ async function setOperator() {
     console.error('Error while setting an operator :', error)
     showErrorModal(`Failed to set ${truncateAddress(operatorAddress.value)} as an operator on ${operatorToken.value}`);
   } finally {
-    isProcessing.value = false
+    pending.operator = false
   }
 }
 
@@ -1851,7 +1843,7 @@ async function getLPBalance() {
     return
   }
 
-  isProcessing.value = true
+  pending.lpBalance = true
   loadingMessage.value = "Fetching LP balance...";
 
   try {
@@ -1883,7 +1875,7 @@ async function getLPBalance() {
     console.error('Error getting LP balance:', error)
     showErrorModal('Failed to get LP balance')
   } finally {
-    isProcessing.value = false
+    pending.lpBalance = false
   }
 }
 
@@ -1945,7 +1937,7 @@ async function getPairReserves() {
       return;
     }
 
-    isProcessing.value = true;
+    pending.reserves = true;
     loadingMessage.value = "Preparing requestReserveInfo transaction...";
 
     const pairInstance = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
@@ -1985,7 +1977,7 @@ async function getPairReserves() {
     console.error('Error getting pair reserves:', error)
     showErrorModal('Failed to get pair reserves')
   } finally {
-    isProcessing.value = false
+    pending.reserves = false
   }
 }
 
@@ -2011,7 +2003,7 @@ async function addLiquidity() {
       showErrorModal('No wallet connected. Please connect MetaMask.');
       return;
     }
-    isProcessing.value = true
+    pending.addLiquidity = true
     loadingMessage.value = "Checking operator status...";
 
     const token0Instance = new ethers.Contract(config.value.TOKEN0_ADDRESS, ERC7984_ABI.abi, signer);
@@ -2073,7 +2065,7 @@ async function addLiquidity() {
     console.error('Error adding liquidity:', error)
     showErrorModal('Failed to add liquidity')
   } finally {
-    isProcessing.value = false
+    pending.addLiquidity = false
   }
 }
 
@@ -2090,7 +2082,7 @@ async function removeLiquidity() {
       showErrorModal('No wallet connected. Please connect MetaMask.');
       return;
     }
-    isProcessing.value = true
+    pending.removeLiquidity = true
     loadingMessage.value = "Checking operator status...";
     const pairInstance = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
 
@@ -2144,7 +2136,7 @@ async function removeLiquidity() {
     console.error('Error removing liquidity:', error)
     showErrorModal('Failed to remove liquidity')
   } finally {
-    isProcessing.value = false
+    pending.removeLiquidity = false
   }
 }
 async function submitRefund() {
@@ -2155,7 +2147,7 @@ async function submitRefund() {
     const signer = provider ? await provider.getSigner() : null;
     if (!signer) return showErrorModal('No wallet connected. Please connect MetaMask.');
 
-    isProcessing.value = true;
+    pending.refund = true;
 
     const pair = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
     const id = refundRequestId.value as number;
@@ -2193,7 +2185,7 @@ async function submitRefund() {
           : 'Failed to claim swap refund';
     showErrorModal(msg);
   } finally {
-    isProcessing.value = false;
+    pending.refund = false;
   }
 }
 // MetaMask functions
@@ -2238,13 +2230,64 @@ const checkMetaMaskConnection = async (): Promise<void> => {
   }
 }
 
+async function switchToRequiredNetwork() {
+  if (!window?.ethereum) return showErrorModal('MetaMask not available.');
+
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: REQUIRED_CHAIN_ID_HEX }],
+    });
+
+    chainId.value = REQUIRED_CHAIN_ID_HEX; // keep local state in sync
+    showSuccessModal(`Switched to ${REQUIRED_NETWORK.chainName}.`);
+
+    if (isConnected.value) {
+      await fetchTokenSymbols();
+      await fetchPrice();
+      maybeShowPOCModal();
+    }
+  } catch (err: any) {
+    // If the chain hasn't been added to MetaMask
+    if (err?.code === 4902) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: REQUIRED_CHAIN_ID_HEX,
+            chainName: REQUIRED_NETWORK.chainName,
+            nativeCurrency: REQUIRED_NETWORK.nativeCurrency,
+            rpcUrls: [REQUIRED_NETWORK.rpcUrl],
+            blockExplorerUrls: [REQUIRED_NETWORK.blockExplorerUrl],
+          }],
+        });
+        chainId.value = REQUIRED_CHAIN_ID_HEX;
+        showSuccessModal(`Added and switched to ${REQUIRED_NETWORK.chainName}.`);
+        if (isConnected.value) {
+          await fetchTokenSymbols();
+          await fetchPrice();
+          maybeShowPOCModal();
+        }
+      } catch {
+        showErrorModal('Please approve adding the network in MetaMask.');
+      }
+    } else if (err?.code === 4001) {
+      // User rejected request
+      showErrorModal('Please approve the network switch in MetaMask.');
+    } else {
+      showErrorModal('Unable to switch network.');
+    }
+  }
+}
+
+
 const connectMetaMask = async (): Promise<void> => {
   if (!isMetaMaskInstalled.value) {
     showErrorModal('Please install MetaMask to use this application')
     return
   }
 
-  isProcessing.value = true
+  pending.metamask = true
 
   try {
     // Request account access
@@ -2258,18 +2301,18 @@ const connectMetaMask = async (): Promise<void> => {
     console.log('Connected to MetaMask:', account.value)
 
     // Check if on the correct network
-    if (chainId.value !== "0x" + REQUIRED_NETWORK.chainId.toString(16)) {
-      showSuccessModal(`Connected to MetaMask, but you need to switch to the ${REQUIRED_NETWORK.chainName} network.`);
+    if (chainId.value.toLowerCase() !== REQUIRED_CHAIN_ID_HEX) {
+      await switchToRequiredNetwork(); // opens MetaMask "switch network" modal
     } else {
       showSuccessModal(`Successfully connected to MetaMask: ${truncateAddress(account.value)}`);
-      fetchTokenSymbols();
-      fetchPrice();
+      await fetchTokenSymbols();
+      await fetchPrice();
     }
   } catch (error) {
     console.error('Error connecting to MetaMask:', error)
     showErrorModal('Failed to connect to MetaMask')
   } finally {
-    isProcessing.value = false
+    pending.metamask = false
   }
 }
 
@@ -2458,7 +2501,7 @@ async function executeSwap() {
 
     console.log(`Swapping ${fromAmount.value} ${inputIsToken0 ? config.value.TOKEN0_SYMBOL : config.value.TOKEN1_SYMBOL} for ${toCurrency.value}`);
 
-    isProcessing.value = true;
+    pending.swap = true;
     loadingMessage.value = "Checking operator status on both tokens…";
 
     const token0 = new ethers.Contract(config.value.TOKEN0_ADDRESS, ERC7984_ABI.abi, signer);
@@ -2536,7 +2579,7 @@ async function executeSwap() {
     console.error("Swap error:", err);
     showErrorModal("Failed to execute swap.");
   } finally {
-    isProcessing.value = false;
+    pending.swap = false;
   }
 }
 
@@ -2650,7 +2693,7 @@ async function deployToken() {
   console.log(`Deploying new token: ${newTokenName.value} (${newTokenSymbol.value})`);
 
   try {
-    isProcessing.value = true;
+    pending.deployToken = true;
     loadingMessage.value = "Deploying token…";
     const addr = await deployConfidentialToken(newTokenName.value, newTokenSymbol.value);
     addDeployedTokenToHistory(addr, newTokenName.value, newTokenSymbol.value);
@@ -2662,7 +2705,7 @@ async function deployToken() {
     console.error(e);
     showErrorModal(e?.message || "Failed to deploy token.");
   } finally {
-    isProcessing.value = false;
+    pending.deployToken = false;
   }
 }
 
@@ -2684,7 +2727,7 @@ async function createPairFromInputs() {
   }
 
   try {
-    isProcessing.value = true;
+    pending.createPair = true;
     loadingMessage.value = "Validating tokens are ERC7984…";
 
     const [ok0, ok1] = await Promise.all([isERC7984Token(t0), isERC7984Token(t1)]);
@@ -2704,7 +2747,7 @@ async function createPairFromInputs() {
     console.error(e);
     showErrorModal(e?.message || "Failed to create pair.");
   } finally {
-    isProcessing.value = false;
+    pending.createPair = false;
   }
 }
 

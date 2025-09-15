@@ -1483,6 +1483,7 @@ async function searchPairByAddress() {
   try {
     pending.searchPairByAddr = true;
     loadingMessage.value = "Searching for pair...";
+    showLoading.value = true;
     const signer = provider ? await provider.getSigner() : null;
     if (!signer) return showErrorModal('No wallet connected. Please connect MetaMask.');
 
@@ -1505,6 +1506,7 @@ async function searchPairByAddress() {
   }
   finally {
     pending.searchPairByAddr = false;
+    showLoading.value = false;
   }
 }
 
@@ -1591,6 +1593,7 @@ const getBalances = async (): Promise<void> => {
 
   pending.balances = true
   loadingMessage.value = "Fetching confidential balances...";
+  showLoading.value = true;
 
   try {
     console.log('Getting balances...');
@@ -1634,7 +1637,8 @@ const getBalances = async (): Promise<void> => {
     console.error('Error getting balances:', error)
     showErrorModal('Failed to get balances')
   } finally {
-    pending.balances = false
+    pending.balances = false;
+    showLoading.value = false;
   }
 }
 
@@ -1658,12 +1662,14 @@ async function updateSwapPrice() {
   try {
     pending.fetchPrice = true
     loadingMessage.value = "Fetching latest price from API...";
+    showLoading.value = true;
     await fetchPrice();
     showSuccessModal(`${config.value.TOKEN0_SYMBOL}/${config.value.TOKEN1_SYMBOL} rate updated successfully!`);
   } catch (error) {
     console.error('Error fetching price from API:', error);
   } finally {
     pending.fetchPrice = false
+    showLoading.value = false;
   }
 }
 
@@ -1681,6 +1687,7 @@ const claimAirdrop = async (): Promise<void> => {
 
   pending.airdrop = true
   loadingMessage.value = "Preparing AirDrop transaction...";
+  showLoading.value = true;
 
   let sourceToken;
   if (tokenAirdrop.value == config.value.TOKEN0_SYMBOL) {
@@ -1706,7 +1713,8 @@ const claimAirdrop = async (): Promise<void> => {
     console.error('Error while claiming airdrop:', error);
     showErrorModal("Error while claiming airdrop");
   } finally {
-    pending.airdrop = false
+    pending.airdrop = false;
+    showLoading.value = false;
   }
 }
 
@@ -1723,6 +1731,7 @@ const transferTokens = async (): Promise<void> => {
 
   pending.transfer = true
   loadingMessage.value = "Preparing transfer transaction...";
+  showLoading.value = true;
 
   const signer = provider ? await provider.getSigner() : null;
   if (!signer) {
@@ -1757,6 +1766,7 @@ const transferTokens = async (): Promise<void> => {
     if (!receipt.status) {
       showErrorModal("Error while transfering tokens");
       pending.transfer = false
+      showLoading.value = false;
       return;
     }
 
@@ -1767,7 +1777,8 @@ const transferTokens = async (): Promise<void> => {
     console.error('Error transferring tokens:', error)
     showErrorModal('Failed to transfer tokens')
   } finally {
-    pending.transfer = false
+    pending.transfer = false;
+    showLoading.value = false;
   }
 }
 
@@ -1790,6 +1801,7 @@ async function setOperator() {
 
   pending.operator = true
   loadingMessage.value = "Preparing setOperator transaction...";
+  showLoading.value = true;
 
   try {
     console.log(`Setting ${operatorAddress.value} as an operator on ${operatorToken.value}.`);
@@ -1832,7 +1844,8 @@ async function setOperator() {
     console.error('Error while setting an operator :', error)
     showErrorModal(`Failed to set ${truncateAddress(operatorAddress.value)} as an operator on ${operatorToken.value}`);
   } finally {
-    pending.operator = false
+    pending.operator = false;
+    showLoading.value = false;
   }
 }
 
@@ -1845,6 +1858,7 @@ async function getLPBalance() {
 
   pending.lpBalance = true
   loadingMessage.value = "Fetching LP balance...";
+  showLoading.value = true;
 
   try {
     console.log('Getting LP balance...')
@@ -1875,7 +1889,8 @@ async function getLPBalance() {
     console.error('Error getting LP balance:', error)
     showErrorModal('Failed to get LP balance')
   } finally {
-    pending.lpBalance = false
+    pending.lpBalance = false;
+    showLoading.value = false;
   }
 }
 
@@ -1939,6 +1954,7 @@ async function getPairReserves() {
 
     pending.reserves = true;
     loadingMessage.value = "Preparing requestReserveInfo transaction...";
+    showLoading.value = true;
 
     const pairInstance = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
     const anchorBlock = await provider!.getBlockNumber();
@@ -1977,7 +1993,8 @@ async function getPairReserves() {
     console.error('Error getting pair reserves:', error)
     showErrorModal('Failed to get pair reserves')
   } finally {
-    pending.reserves = false
+    pending.reserves = false;
+    showLoading.value = false;
   }
 }
 
@@ -2005,6 +2022,7 @@ async function addLiquidity() {
     }
     pending.addLiquidity = true
     loadingMessage.value = "Checking operator status...";
+    showLoading.value = true;
 
     const token0Instance = new ethers.Contract(config.value.TOKEN0_ADDRESS, ERC7984_ABI.abi, signer);
     const token1Instance = new ethers.Contract(config.value.TOKEN1_ADDRESS, ERC7984_ABI.abi, signer);
@@ -2065,7 +2083,8 @@ async function addLiquidity() {
     console.error('Error adding liquidity:', error)
     showErrorModal('Failed to add liquidity')
   } finally {
-    pending.addLiquidity = false
+    pending.addLiquidity = false;
+    showLoading.value = false;
   }
 }
 
@@ -2084,6 +2103,8 @@ async function removeLiquidity() {
     }
     pending.removeLiquidity = true
     loadingMessage.value = "Checking operator status...";
+    showLoading.value = true;
+
     const pairInstance = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
 
 
@@ -2136,7 +2157,8 @@ async function removeLiquidity() {
     console.error('Error removing liquidity:', error)
     showErrorModal('Failed to remove liquidity')
   } finally {
-    pending.removeLiquidity = false
+    pending.removeLiquidity = false;
+    showLoading.value = false;
   }
 }
 async function submitRefund() {
@@ -2148,6 +2170,8 @@ async function submitRefund() {
     if (!signer) return showErrorModal('No wallet connected. Please connect MetaMask.');
 
     pending.refund = true;
+    loadingMessage.value = "Preparing refund transaction...";
+    showLoading.value = true;
 
     const pair = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
     const id = refundRequestId.value as number;
@@ -2186,6 +2210,7 @@ async function submitRefund() {
     showErrorModal(msg);
   } finally {
     pending.refund = false;
+    showLoading.value = false;
   }
 }
 // MetaMask functions
@@ -2503,6 +2528,7 @@ async function executeSwap() {
 
     pending.swap = true;
     loadingMessage.value = "Checking operator status on both tokens…";
+    showLoading.value = true;
 
     const token0 = new ethers.Contract(config.value.TOKEN0_ADDRESS, ERC7984_ABI.abi, signer);
     const token1 = new ethers.Contract(config.value.TOKEN1_ADDRESS, ERC7984_ABI.abi, signer);
@@ -2580,6 +2606,7 @@ async function executeSwap() {
     showErrorModal("Failed to execute swap.");
   } finally {
     pending.swap = false;
+    showLoading.value = false;
   }
 }
 
@@ -2695,6 +2722,8 @@ async function deployToken() {
   try {
     pending.deployToken = true;
     loadingMessage.value = "Deploying token…";
+    showLoading.value = true;
+
     const addr = await deployConfidentialToken(newTokenName.value, newTokenSymbol.value);
     addDeployedTokenToHistory(addr, newTokenName.value, newTokenSymbol.value);
     showSuccessModal(`Deployed ${newTokenSymbol.value} at ${addr}`);
@@ -2706,6 +2735,7 @@ async function deployToken() {
     showErrorModal(e?.message || "Failed to deploy token.");
   } finally {
     pending.deployToken = false;
+    showLoading.value = false;
   }
 }
 
@@ -2729,6 +2759,7 @@ async function createPairFromInputs() {
   try {
     pending.createPair = true;
     loadingMessage.value = "Validating tokens are ERC7984…";
+    showLoading.value = true;
 
     const [ok0, ok1] = await Promise.all([isERC7984Token(t0), isERC7984Token(t1)]);
     if (!ok0 || !ok1) {
@@ -2748,6 +2779,7 @@ async function createPairFromInputs() {
     showErrorModal(e?.message || "Failed to create pair.");
   } finally {
     pending.createPair = false;
+    showLoading.value = false;
   }
 }
 

@@ -479,6 +479,10 @@
                 <span class="text-sm font-medium text-foreground" v-if="swapRate">
                   1 {{ fromCurrency }} = {{ swapRate.toFixed(4) }} {{ toCurrency }}
                 </span>
+                <span v-if="priceNote"
+                  class="ml-2 text-xs px-2 py-0.5 rounded-full border border-slate-600 text-muted-foreground">
+                  {{ priceNote }}
+                </span>
                 <span class="text-sm text-muted-foreground" v-else>
                   Loading...
                 </span>
@@ -1078,6 +1082,7 @@ import NETWORK_ENV from "../Network.json";
 import ERC7984_ABI from "../contracts/ConfidentialToken.json";
 import CAMMPAIR_ABI from "../contracts/CAMMPair.json";
 import CAMMFACTORY_ABI from "../contracts/CAMMFactory.json";
+import ORACLE_ABI from "../contracts/ObolPriceOracle.json";
 
 // Types
 interface Config {
@@ -1140,6 +1145,7 @@ const searchToken0Input = ref<string>("")
 const searchToken1Input = ref<string>("")
 const searchedPair = ref<string>("")
 const pairNotFound = ref<boolean>(false)
+const priceNote = ref<string>("");
 
 
 const selectRecommendedPair = () => {
@@ -1643,19 +1649,91 @@ const getBalances = async (): Promise<void> => {
 }
 
 async function fetchPrice() {
-  const res = await fetch(`/api/price-approx?pair=${config.value.PAIR_ADDRESS}`)
 
-  if (!res.ok) {
-    console.log(res)
-    throw new Error(`API error: ${res.status}`)
+  // const res = await fetch(`/api/price-approx?pair=${config.value.PAIR_ADDRESS}`)
+
+  // if (!res.ok) {
+  //   console.log(res)
+  //   throw new Error(`API error: ${res.status}`)
+  // }
+  // const data = await res.json();
+  // console.log("Price data from API :", data);
+
+  // T0T1Rate.value = parseFloat(data.priceToken0Token1);
+
+  // // Update swap rate
+  // swapRate.value = fromCurrency.value == config.value.TOKEN0_SYMBOL ? T0T1Rate.value : 1 / T0T1Rate.value
+
+  try {
+    priceNote.value = "";
+
+    const isDefaultPair =
+      (config.value.PAIR_ADDRESS || "").toLowerCase() ===
+      (CAMM_ENV.DEFAULT_PAIR_ADDRESS || "").toLowerCase();
+
+    const oracleAddr = (CAMM_ENV.DEFAULT_ORACLE_ADDRESS || "").toLowerCase();
+    const hasOracle =
+      isDefaultPair &&
+      oracleAddr &&
+      oracleAddr !== ethers.ZeroAddress.toLowerCase();
+
+    // Heuristics to identify EUR / USD by symbol
+    const isEUR = (s: string) => {
+      const u = (s || "").toUpperCase();
+      return u === "EUR" || u.startsWith("EUR") || u.endsWith("EUR") || u.includes(" EUR");
+    };
+    const isUSD = (s: string) => {
+      const u = (s || "").toUpperCase();
+      return u === "USD" || u.startsWith("USD") || u.endsWith("USD") || u.includes(" USD");
+    };
+
+    if (hasOracle) {
+      const signer = provider ? await provider.getSigner() : null;
+      if (!signer) throw new Error("No wallet connected.");
+
+      const oracle = new ethers.Contract(oracleAddr, ORACLE_ABI.abi ?? ORACLE_ABI, signer);
+      const price6 = await oracle.price6(); // EUR per 1 USD, scaled 1e6
+      const eurPerUsd = Number(price6) / 1_000_000;
+
+      const s0 = (config.value.TOKEN0_SYMBOL || "").toUpperCase();
+      const s1 = (config.value.TOKEN1_SYMBOL || "").toUpperCase();
+
+      // T0T1Rate must be "token1 per 1 token0"
+      let rate: number | null = null;
+      if (isEUR(s0) && isUSD(s1)) {
+        // Want USD per 1 EUR  =>  1 / (EUR per 1 USD)
+        rate = eurPerUsd > 0 ? 1 / eurPerUsd : 0;
+      } else if (isUSD(s0) && isEUR(s1)) {
+        // Want EUR per 1 USD  =>  EUR per 1 USD (as-is)
+        rate = eurPerUsd;
+      }
+
+      if (rate && rate > 0) {
+        T0T1Rate.value = rate;
+        swapRate.value =
+          fromCurrency.value === config.value.TOKEN0_SYMBOL
+            ? T0T1Rate.value
+            : 1 / T0T1Rate.value;
+        priceNote.value = "oracle";
+        return;
+      }
+
+      // If symbols are not EUR/USD, fall back to self-decrypt
+    }
+
+    // Fallback / non-default pair: self-decrypt from reserves
+    await requestPriceInfo();
+    priceNote.value = "self-decrypted";
+  } catch (e) {
+    console.error("fetchPrice error:", e);
+    // As a last resort, try self-decrypt as well
+    try {
+      await requestPriceInfo();
+      priceNote.value = "self-decrypted";
+    } catch {
+      // keep previous values if any
+    }
   }
-  const data = await res.json();
-  console.log("Price data from API :", data);
-
-  T0T1Rate.value = parseFloat(data.priceToken0Token1);
-
-  // Update swap rate
-  swapRate.value = fromCurrency.value == config.value.TOKEN0_SYMBOL ? T0T1Rate.value : 1 / T0T1Rate.value
 }
 
 async function updateSwapPrice() {
@@ -1895,51 +1973,18 @@ async function getLPBalance() {
 }
 
 async function decryptObfuscatedReserves(encryptedReserve0: any, encryptedReserve1: any) {
-  const signer = provider ? await provider.getSigner() : null;
-  if (!signer) {
-    showErrorModal('No wallet connected. Please connect MetaMask.');
-    return;
+
+  const handles = [];
+  if (encryptedReserve0 !== ethers.ZeroHash) handles.push(encryptedReserve0);
+  if (encryptedReserve1 !== ethers.ZeroHash) handles.push(encryptedReserve1);
+
+  if (handles.length === 0) {
+    return [BigInt(0), BigInt(0)];
   }
+  const values = await fhevmInstance.publicDecrypt(handles);
 
-  const keypair = fhevmInstance.generateKeypair();
-  const handleContractPairs = [
-    {
-      handle: encryptedReserve0,
-      contractAddress: config.value.PAIR_ADDRESS,
-    },
-    {
-      handle: encryptedReserve1,
-      contractAddress: config.value.PAIR_ADDRESS,
-    },
-  ];
-  const startTimeStamp = Math.floor(Date.now() / 1000).toString();
-  const durationDays = "10";
-  const contractAddresses = [config.value.PAIR_ADDRESS];
-
-  const eip712 = fhevmInstance.createEIP712(keypair.publicKey, contractAddresses, startTimeStamp, durationDays);
-
-  const signature = await signer.signTypedData(
-    eip712.domain,
-    {
-      UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
-    },
-    eip712.message,
-  );
-
-  const result = await fhevmInstance.userDecrypt(
-    handleContractPairs,
-    keypair.privateKey,
-    keypair.publicKey,
-    signature.replace("0x", ""),
-    contractAddresses,
-    await signer.getAddress(),
-    startTimeStamp,
-    durationDays,
-  );
-
-  const decryptedReserve0 = result[encryptedReserve0];
-  const decryptedReserve1 = result[encryptedReserve1];
-  return [decryptedReserve0, decryptedReserve1];
+  console.log("Decrypted reserves values:", values);
+  return [values[encryptedReserve0], values[encryptedReserve1]];
 };
 
 async function getPairReserves() {
@@ -1953,27 +1998,14 @@ async function getPairReserves() {
     }
 
     pending.reserves = true;
-    loadingMessage.value = "Preparing requestReserveInfo transaction...";
+    loadingMessage.value = "Getting obfuscated reserves info...";
     showLoading.value = true;
 
     const pairInstance = new ethers.Contract(config.value.PAIR_ADDRESS, CAMMPAIR_ABI.abi, signer);
-    const anchorBlock = await provider!.getBlockNumber();
-    const eventPromise = waitForEventOnce(pairInstance, "discloseReservesInfo", { fromBlock: anchorBlock });
 
-    const tx = await pairInstance.requestReserveInfo();
-    loadingMessage.value = "Waiting for requestReserveInfo transaction to be mined...";
-
-    const receipt = await tx.wait();
-    if (!receipt.status) {
-      console.error("Error sending the getReserves tx.");
-      return;
-    }
-
-    console.log("Request reserve info tx status:", receipt.status);
-
-    const reservesEvent = await eventPromise;
-    const encryptedReserve0 = reservesEvent.args[2];
-    const encryptedReserve1 = reservesEvent.args[3];
+    const obfusctaedReserves = await pairInstance.obfuscatedReserves();
+    const encryptedReserve0 = obfusctaedReserves[0];
+    const encryptedReserve1 = obfusctaedReserves[1];
 
     console.log("Got encrypted reserves:", encryptedReserve0, encryptedReserve1);
 
@@ -2695,7 +2727,7 @@ async function factoryCreatePair(t0: string, t1: string): Promise<string> {
   const factory = new ethers.Contract(CAMM_ENV.FACTORY_ADDRESS, CAMMFACTORY_ABI.abi, signer);
 
   loadingMessage.value = "Submitting createPair transaction…";
-  const tx = await factory.createPair(t0, t1, CAMM_ENV.CAMM_PRICE_SCANNER_ADDRESS);
+  const tx = await factory.createPair(t0, t1);
   const rcpt = await tx.wait();
   if (!rcpt?.status) throw new Error("createPair transaction failed.");
 

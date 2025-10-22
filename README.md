@@ -18,7 +18,6 @@ CAMM contracts repo at https://github.com/6ygb/CAMM
 - **ethers v6** for wallet & contract calls  
 - **Zama relayer SDK** for FHE related logic.
 - Contracts: **ConfidentialToken (ERC-7984)**, **CAMMPair**, **CAMMFactory**  
-- A small price endpoint used by the UI: `GET /api/price-approx?pair=<address>`
 
 ---
 
@@ -62,8 +61,8 @@ Default pair & factory addresses live in `CAMM.json`:
 ```json
 {
     "DEFAULT_PAIR_ADDRESS": "0x2ab55edf81f6c17fa1A22aF23ed38cE8cF276414",
+    "DEFAULT_ORACLE_ADDRESS" : "0xa7a7AF22A88C5dc519A7811c0c5604dce692BA65",
     "FACTORY_ADDRESS": "0x15F98C153493b12D85c0F493e9E7c971203a4809",
-    "CAMM_PRICE_SCANNER_ADDRESS": "0xFEE00b30aF19d37CE8421e6EF7DD0e9e62F4b2c5",
     "BACKEND_GITHUB_URL": "https://github.com/6ygb/CAMM",
     "FRONTEND_GITHUB_URL" : "https://github.com/6ygb/CAMM-FRONT"
 }
@@ -119,7 +118,7 @@ Confidential token-for-token swaps via `CAMMPair`.
   5. (Optional) **Self-decrypt** the in/out amounts and display a summary.
 
 - **Self decrypt price**  
-  Requests obfuscated reserves from the pair, performs a user decryption, and recomputes the **current rate** from fresh data.
+  Retrieves obfuscated reserves from the pair, performs a public decryption, and recomputes the **current rate** from fresh data.
 
 ---
 
@@ -218,46 +217,6 @@ Dev tools for deploying tokens and creating pairs.
 Use the **Clear All** buttons in the UI to reset these lists.
 
 ---
-
-## API - Price Approximation
-
-### Endpoint
-`GET /api/price-approx?pair=<address>`
-
-### Query Parameters
-- **pair** (required): EVM address of a CAMM pair (0x…40).
-
-### What it does
-- Reads obfuscated reserves directly from `pair.obfuscatedReserves()`.
-- Uses the Zama FHE relayer SDK (scanner key) to decrypt reserve handles **only if they are non-zero**.
-- Returns decrypted reserves (as strings) and a simple cross-price in both directions **only if both reserves are > 0**.
-
-### Response (example)
-    {
-      "decryptedReserve0": "123456000000",
-      "decryptedReserve1": "654321000000",
-      "priceToken0Token1": "5.299876",
-      "priceToken1Token0": "0.188700"
-    }
-
-### Caching & Rate Limiting
-- Per-pair responses are cached for **60 seconds** (to avoid using too much infura RPC).
-- If reserve handles are unchanged since the last call, the cached result is returned (avoids unnecessary decrypts).
-- **Zero-handle guard:** if a reserve handle is the zero hash, it is treated as 0 without decrypt.
-
-### Requirements
-- `RPC_URL` (HTTP(s) ETH JSON-RPC endpoint).
-- `SCANNER_PK` (without 0x prefix) in `server/config.local.json`.
-```json
-{
-  "RPC_URL": "https://sepolia.infura.io/v3/xxxx",
-  "SCANNER_PK": "xxxx"
-}
-```
-
-### Errors
-- **400** - Missing `pair` query parameter.
-- **500** - Internal error (provider/EIP-712/decrypt failure).
 
 
 

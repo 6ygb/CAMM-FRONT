@@ -1649,21 +1649,6 @@ const getBalances = async (): Promise<void> => {
 }
 
 async function fetchPrice() {
-
-  // const res = await fetch(`/api/price-approx?pair=${config.value.PAIR_ADDRESS}`)
-
-  // if (!res.ok) {
-  //   console.log(res)
-  //   throw new Error(`API error: ${res.status}`)
-  // }
-  // const data = await res.json();
-  // console.log("Price data from API :", data);
-
-  // T0T1Rate.value = parseFloat(data.priceToken0Token1);
-
-  // // Update swap rate
-  // swapRate.value = fromCurrency.value == config.value.TOKEN0_SYMBOL ? T0T1Rate.value : 1 / T0T1Rate.value
-
   try {
     priceNote.value = "";
 
@@ -1692,8 +1677,8 @@ async function fetchPrice() {
       if (!signer) throw new Error("No wallet connected.");
 
       const oracle = new ethers.Contract(oracleAddr, ORACLE_ABI.abi ?? ORACLE_ABI, signer);
-      const price6 = await oracle.price6(); // EUR per 1 USD, scaled 1e6
-      const eurPerUsd = Number(price6) / 1_000_000;
+      const price6 = await oracle.price6(); // USD per 1 EUR, scaled 1e6
+      const usdPerEur = Number(price6) / 1_000_000;
 
       const s0 = (config.value.TOKEN0_SYMBOL || "").toUpperCase();
       const s1 = (config.value.TOKEN1_SYMBOL || "").toUpperCase();
@@ -1701,11 +1686,12 @@ async function fetchPrice() {
       // T0T1Rate must be "token1 per 1 token0"
       let rate: number | null = null;
       if (isEUR(s0) && isUSD(s1)) {
-        // Want USD per 1 EUR  =>  1 / (EUR per 1 USD)
-        rate = eurPerUsd > 0 ? 1 / eurPerUsd : 0;
+        // Want USD per 1 EUR  => current rate as is
+        rate = usdPerEur;
+        //eurPerUsd > 0 ? 1 / eurPerUsd : 0;
       } else if (isUSD(s0) && isEUR(s1)) {
-        // Want EUR per 1 USD  =>  EUR per 1 USD (as-is)
-        rate = eurPerUsd;
+        // Want EUR per 1 USD  =>  1 / (USD per 1 EUR)
+        rate = usdPerEur > 0 ? 1 / usdPerEur : 0;;
       }
 
       if (rate && rate > 0) {

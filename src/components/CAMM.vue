@@ -1169,6 +1169,7 @@ const tokenFactor = BigInt(10) ** BigInt(6);
 
 const CAMM_GITHUB_URL: string = CAMM_ENV.BACKEND_GITHUB_URL;
 const CAMM_FRONT_GITHUB_URL: string = CAMM_ENV.FRONTEND_GITHUB_URL;
+const nullHandle = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 // Loading Modal State
 const pending = reactive({
@@ -1547,48 +1548,26 @@ const refreshPage = () => {
   window.location.reload();
 };
 
-async function reencryption(CONTRACT_ADDRESS: any, USER_ADDRESS: any, encrypted_value: any) {
-  const signer = provider ? await provider.getSigner() : null;
-  if (!signer) {
-    showErrorModal('No wallet connected. Please connect MetaMask.');
-    return;
-  }
-
+async function bulkReencryption(handleContractPairs: { handle: any, contractAddress: string }[], contractAddresses: string[]) {
+  const signer = provider ? await provider.getSigner() : null
+  if (!signer) { showErrorModal('No wallet connected.'); return }
   const keypair = fhevmInstance.generateKeypair();
-  const handleContractPairs = [
-    {
-      handle: encrypted_value,
-      contractAddress: CONTRACT_ADDRESS,
-    },
-  ];
   const startTimeStamp = Math.floor(Date.now() / 1000).toString();
   const durationDays = "10";
-  const contractAddresses = [CONTRACT_ADDRESS];
-
-  const eip712 = fhevmInstance.createEIP712(keypair.publicKey, contractAddresses, startTimeStamp, durationDays);
-
+  const eip712 = fhevmInstance.createEIP712(keypair.publicKey, contractAddresses, startTimeStamp, durationDays)
   const signature = await signer.signTypedData(
     eip712.domain,
-    {
-      UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification,
-    },
+    { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
     eip712.message,
-  );
-
+  )
   const result = await fhevmInstance.userDecrypt(
-    handleContractPairs,
-    keypair.privateKey,
-    keypair.publicKey,
-    signature.replace("0x", ""),
-    contractAddresses,
-    await signer.getAddress(),
-    startTimeStamp,
-    durationDays,
-  );
-
-  const decryptedValue = result[encrypted_value];
-  return decryptedValue;
-};
+    handleContractPairs, keypair.privateKey, keypair.publicKey, signature.replace("0x", ""),
+    contractAddresses, await signer.getAddress(), startTimeStamp, durationDays
+  )
+  const out: { [k: string]: any } = {}
+  for (const p of handleContractPairs) out[p.handle] = result[p.handle];
+  return out;
+}
 
 // Token tab functions
 const getBalances = async (): Promise<void> => {
@@ -1617,25 +1596,26 @@ const getBalances = async (): Promise<void> => {
     const encryptedBalance1 = await token1Instance.confidentialBalanceOf(await signer.getAddress());
 
     console.log("Encrypted Balances :", encryptedBalance0, encryptedBalance1)
-    if (encryptedBalance0 == 0) {
-      token0Balance.value = 0;
-    }
-    else {
-      loadingMessage.value = `Decrypting ${config.value.TOKEN0_SYMBOL} balance...`;
-      const clearBalance0 = await reencryption(config.value.TOKEN0_ADDRESS, await signer.getAddress(), encryptedBalance0);
-      token0Balance.value = parseInt(ethers.formatUnits(clearBalance0, 6));
-      console.log("Decrypted balance 0 :", clearBalance0);
-    }
 
-    if (encryptedBalance1 == 0) {
+    loadingMessage.value = "Decrypting balances…";
+
+    const handleContractPairs = [];
+
+    if (encryptedBalance0 != nullHandle) { handleContractPairs.push({ handle: encryptedBalance0, contractAddress: await token0Instance.getAddress() }) };
+    if (encryptedBalance1 != nullHandle) { handleContractPairs.push({ handle: encryptedBalance1, contractAddress: await token1Instance.getAddress() }) };
+    const contractAddresses = Array.from(new Set(handleContractPairs.map(hc => hc.contractAddress)));
+
+    if (handleContractPairs.length === 0) {
+      token0Balance.value = 0;
       token1Balance.value = 0;
+      showSuccessModal('Balances updated!');
+      return;
     }
-    else {
-      loadingMessage.value = `Decrypting ${config.value.TOKEN1_SYMBOL} balance...`;
-      const clearBalance1 = await reencryption(config.value.TOKEN1_ADDRESS, await signer.getAddress(), encryptedBalance1);
-      token1Balance.value = parseInt(ethers.formatUnits(clearBalance1, 6));
-      console.log("Decrypted balance 1 :", clearBalance1);
-    }
+    const decryptedAmounts = await bulkReencryption(handleContractPairs, contractAddresses);
+
+    if (!decryptedAmounts) throw new Error("Decryption failed");
+    token0Balance.value = Number(ethers.formatUnits(decryptedAmounts[encryptedBalance0], 6) ?? 0);
+    token1Balance.value = Number(ethers.formatUnits(decryptedAmounts[encryptedBalance1], 6) ?? 0);
 
     showSuccessModal('Balances updated successfully!')
   }
@@ -1938,14 +1918,21 @@ async function getLPBalance() {
     const encryptedLPBalance = await pairInstance.confidentialBalanceOf(await signer.getAddress());
 
     console.log("Encrypted LP Balance:", encryptedLPBalance);
-    if (encryptedLPBalance == 0) {
+    if (encryptedLPBalance == nullHandle) {
       lpBalance.value = 0;
     }
     else {
       loadingMessage.value = "Decrypting LPBalance...";
-      const clearLPBalance = await reencryption(config.value.PAIR_ADDRESS, await signer.getAddress(), encryptedLPBalance);
-      lpBalance.value = parseInt(ethers.formatUnits(clearLPBalance, 6));
-      console.log("Decrypted LP balance:", clearLPBalance);
+
+      const handleContractPairs = [{ handle: encryptedLPBalance, contractAddress: await pairInstance.getAddress() }];
+      const contractAddresses = Array.from(new Set(handleContractPairs.map(hc => hc.contractAddress)));
+
+      const decryptedAmounts = await bulkReencryption(handleContractPairs, contractAddresses);
+
+      if (!decryptedAmounts) throw new Error("Decryption failed");
+      lpBalance.value = Number(ethers.formatUnits(decryptedAmounts[encryptedLPBalance], 6) ?? 0);
+
+      console.log("Decrypted LP balance:", lpBalance.value);
     }
 
     showSuccessModal('LP balance updated successfully!')
